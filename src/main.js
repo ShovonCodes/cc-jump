@@ -85,11 +85,39 @@ export async function main() {
 
   printResumingLine(chosenDirectory.originalPath);
 
-  const exitCode = await resumeSession(
-    chosenDirectory.originalPath,
-    chosenSession.id
-  );
-  process.exitCode = exitCode;
+  try {
+    process.exitCode = await resumeSession(
+      chosenDirectory.originalPath,
+      chosenSession.id
+    );
+  } catch (launchError) {
+    // claude failed to even start. Explain why, so the user isn't left with a
+    // bare "Resuming…" line and a silent exit.
+    process.exitCode = 1;
+    printError(describeLaunchFailure(launchError, chosenDirectory.originalPath));
+  }
+}
+
+// Turns a failure to launch claude into a clear, actionable message based on the
+// underlying error code.
+function describeLaunchFailure(launchError, originalPath) {
+  const code = launchError && launchError.code;
+
+  if (code === "ENOENT") {
+    return (
+      "Couldn't launch claude — it may have been uninstalled, or the project " +
+      "directory was removed:\n  " +
+      shortenHomePath(originalPath) +
+      "\nReinstall it with: npm install -g @anthropic-ai/claude-code"
+    );
+  }
+  if (code === "EACCES" || code === "EPERM") {
+    return "Couldn't launch claude — permission denied. Check that it is executable.";
+  }
+
+  const reason =
+    launchError && launchError.message ? launchError.message : String(launchError);
+  return `Couldn't launch claude: ${reason}`;
 }
 
 // The amber confirmation line shown just before Claude Code takes over.

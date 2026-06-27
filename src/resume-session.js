@@ -42,18 +42,24 @@ export function isClaudeAvailable() {
 //     so there is nothing to quote or escape and no chance of shell injection
 //     from an odd directory name.
 export function resumeSession(originalPath, sessionId) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const child = spawn("claude", ["--resume", sessionId], {
       cwd: originalPath,
       stdio: "inherit",
     });
 
-    child.on("error", () => {
-      // If the launch itself fails (e.g. claude vanished between our check and
-      // now), report a non-zero code so the caller can surface a clear message.
-      resolve(1);
+    // The "error" event means claude never even started — it vanished after our
+    // PATH check, the directory became unreadable, exec was denied, etc. We
+    // reject with the real error so the caller can explain what went wrong.
+    // Resolving a bare exit code here would leave the user staring at a silent
+    // exit right after the "Resuming…" line.
+    child.on("error", (launchError) => {
+      reject(launchError);
     });
 
+    // The "exit" event means claude actually ran and then finished. A non-zero
+    // code here came from claude itself, which has already printed its own
+    // message to the inherited terminal, so we just pass the code through.
     child.on("exit", (exitCode) => {
       resolve(exitCode === null ? 0 : exitCode);
     });
