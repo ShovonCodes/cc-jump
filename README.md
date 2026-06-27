@@ -10,9 +10,7 @@
   <img src="https://img.shields.io/node/v/cc-jump.svg?color=2dd4bf" alt="node version">
 </p>
 
-<!-- Demo: record the flow, save it to assets/demo.gif, and replace the line
-     below with: <p align="center"><img src="assets/demo.gif" alt="cc-jump demo" width="720"></p> -->
-<p align="center"><em>📹 Demo GIF coming soon — contributions welcome.</em></p>
+<p align="center"><img src="assets/cc-jump.gif" alt="cc-jump demo" width="720"></p>
 
 ```bash
 npx cc-jump
@@ -48,7 +46,7 @@ It works out each project's real path by reading the working directory recorded 
 
 ## Contributing
 
-I built this for myself, but if it helps you too, that's the point. The code is kept small and readable on purpose, so it's easy to pick up — see [CONTRIBUTING.md](./CONTRIBUTING.md). A demo GIF is the most-wanted contribution right now — drop one at `assets/demo.gif`.
+I built this for myself, but if it helps you too, that's the point. The code is kept small and readable on purpose, so it's easy to pick up — see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## Similar tools
 
