@@ -19,7 +19,7 @@ If you use Claude Code across a handful of projects, you end up with a lot of se
 ```
 npx cc-jump
   → the folders that hold your projects (projects/, work/, …)
-  → drill down one level at a time (personal/, cuttingroom/, …)
+  → drill down one level at a time (personal/, work/, …)
   → reach a project, see its sessions (with titles and timestamps)
   → pick a session
   → you're back in Claude Code, resumed, in the right directory
@@ -31,7 +31,7 @@ Folders with a single child are skipped automatically, so every menu offers a re
 
 Claude Code stores every session on your machine under `~/.claude/projects/`. Each subdirectory there is one project, and inside it there's one `.jsonl` file per session — a full transcript of that conversation.
 
-The subdirectory names are an encoded form of the project's path: Claude Code takes a path like `/Users/you/projects/app` and replaces every `/` with `-`. That encoding is lossy, though — real folder names contain dashes too (think `cc-jump` or `vimond.io`), so you can't reliably turn the encoded name back into a real path. So instead of trusting the folder name, `cc-jump` reads the **actual working directory that each session recorded inside its own transcript**. That value is exact, which means the path you jump back into is always correct.
+The subdirectory names are an encoded form of the project's path: Claude Code takes a path like `/Users/you/projects/app` and replaces every `/` with `-`. That encoding is lossy, though — real folder names contain dashes too (think `cc-jump` or `my-web-app`), so you can't reliably turn the encoded name back into a real path. So instead of trusting the folder name, `cc-jump` reads the **actual working directory that each session recorded inside its own transcript**. That value is exact, which means the path you jump back into is always correct.
 
 To label each session, `cc-jump` looks inside the transcript for, in order of preference:
 
@@ -80,4 +80,4 @@ The difference with `cc-jump` is scope: it does exactly one thing. It's the simp
 
 ## License
 
-[MIT](./LICENSE) © Shovon
+[MIT](./LICENSE) © ShovonCodes

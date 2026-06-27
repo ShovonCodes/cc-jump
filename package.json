@@ -23,14 +23,14 @@
     "@clack/prompts": "^0.7.0"
   },
   "license": "MIT",
-  "author": "Shovon",
-  "homepage": "https://github.com/shovon/cc-jump#readme",
+  "author": "ShovonCodes",
+  "homepage": "https://github.com/ShovonCodes/cc-jump#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/shovon/cc-jump.git"
+    "url": "git+https://github.com/ShovonCodes/cc-jump.git"
   },
   "bugs": {
-    "url": "https://github.com/shovon/cc-jump/issues"
+    "url": "https://github.com/ShovonCodes/cc-jump/issues"
   },
   "keywords": [
     "claude",

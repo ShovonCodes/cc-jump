@@ -5,7 +5,7 @@ Thanks for taking a look. This project is small on purpose, and the code is mean
 ## Running it locally
 
 ```bash
-git clone https://github.com/shovon/cc-jump.git
+git clone https://github.com/ShovonCodes/cc-jump.git
 cd cc-jump
 npm install
 node bin/cc-jump.js

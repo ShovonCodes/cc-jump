@@ -26,7 +26,7 @@ test("collapses single-child chains down to the first real branch", () => {
   const tree = buildProjectTree([
     fakeProject("/Users/me/projects/personal/cc-jump", 3, 300),
     fakeProject("/Users/me/projects/personal/chor", 2, 200),
-    fakeProject("/Users/me/projects/cuttingroom/vimond", 19, 100),
+    fakeProject("/Users/me/projects/work/api", 19, 100),
   ]);
 
   // /Users, /Users/me and /Users/me/projects each have a single child, so we
@@ -40,16 +40,16 @@ test("lists child folders most-recently-active first with aggregate counts", () 
   const tree = buildProjectTree([
     fakeProject("/Users/me/projects/personal/cc-jump", 3, 300),
     fakeProject("/Users/me/projects/personal/chor", 2, 200),
-    fakeProject("/Users/me/projects/cuttingroom/vimond", 19, 100),
+    fakeProject("/Users/me/projects/work/api", 19, 100),
   ]);
 
   const folders = listChildFolders(collapseToPresentable(tree));
 
-  // personal's newest activity (300) beats cuttingroom's (100), so it sorts
-  // first. cuttingroom has only one project, so it collapses to a single row.
+  // personal's newest activity (300) beats work's (100), so it sorts
+  // first. work has only one project, so it collapses to a single row.
   assert.deepEqual(
     folders.map((folder) => folder.label),
-    ["personal", "cuttingroom/vimond"]
+    ["personal", "work/api"]
   );
   // personal aggregates its two projects: 3 + 2 = 5 sessions.
   assert.equal(folders[0].totalSessions, 5);
