@@ -31,10 +31,11 @@ import { promptUserToPickSession, SESSION_BACK } from "./prompt-session.js";
 import { isClaudeAvailable, resumeSession } from "./resume-session.js";
 
 export async function main() {
-  console.log(renderHeader(readOwnVersion()));
+  const version = readOwnVersion();
 
   // Edge case: Claude Code has never been run, so there's no data directory yet.
   if (!projectsRootExists()) {
+    console.log(renderHeader(version));
     printEmptyState(
       "No Claude Code sessions found.",
       "Run `claude` in a project directory first, then come back."
@@ -46,6 +47,7 @@ export async function main() {
 
   // Edge case: the data directory exists but every project inside it is empty.
   if (projectDirectories.length === 0) {
+    console.log(renderHeader(version));
     printEmptyState(
       "No sessions yet.",
       "Start one by running `claude` in a project directory."
@@ -54,12 +56,31 @@ export async function main() {
   }
 
   const projectTree = buildProjectTree(projectDirectories);
-  const chosen = await navigateToSession(projectTree);
+
+  // Redraw the header at the top of a freshly cleared screen before every menu,
+  // so stepping in and out of folders updates the view in place instead of
+  // leaving a trail of finished menus scrolling down the terminal. We clear only
+  // the visible screen (2J, not 3J), so whatever you had before running cc-jump
+  // is still a scroll away.
+  const redrawFrame = () => {
+    clearScreen();
+    console.log(renderHeader(version));
+  };
+
+  const chosen = await navigateToSession(projectTree, redrawFrame);
   if (!chosen) {
     return; // User cancelled — exit quietly.
   }
 
   await resumeChosenSession(chosen.project, chosen.session);
+}
+
+// Clears the visible screen and moves the cursor home so the next menu redraws
+// in the same place. Only meaningful on a real terminal.
+function clearScreen() {
+  if (process.stdout.isTTY) {
+    process.stdout.write("\x1b[2J\x1b[H");
+  }
 }
 
 // Walks the user down through the folder tree and back up again until they pick
@@ -68,7 +89,7 @@ export async function main() {
 // `stack` holds the folders we descended through so "Back" can pop up one level.
 // We start at the first folder worth showing — single-child chains near the root
 // (like /Users/me) are skipped so the first menu offers a real choice.
-async function navigateToSession(projectTree) {
+async function navigateToSession(projectTree, redrawFrame) {
   let currentNode = collapseToPresentable(projectTree);
   const folderStack = [];
 
@@ -79,7 +100,11 @@ async function navigateToSession(projectTree) {
     // A folder with sessions and no sub-folders is a leaf project: skip the
     // folder menu entirely and go straight to its sessions.
     if (hasOwnSessions && childFolders.length === 0) {
-      const session = await pickSession(currentNode.project, folderStack.length > 0);
+      const session = await pickSession(
+        currentNode.project,
+        folderStack.length > 0,
+        redrawFrame
+      );
       if (session === null) {
         return null;
       }
@@ -90,6 +115,7 @@ async function navigateToSession(projectTree) {
       return { project: currentNode.project, session: session };
     }
 
+    redrawFrame();
     const choice = await promptUserToPickFromFolder(
       currentNode,
       childFolders,
@@ -110,7 +136,7 @@ async function navigateToSession(projectTree) {
       continue;
     }
     if (choice.kind === FOLDER_CHOICE.SESSIONS) {
-      const session = await pickSession(currentNode.project, true);
+      const session = await pickSession(currentNode.project, true, redrawFrame);
       if (session === null) {
         return null;
       }
@@ -125,8 +151,10 @@ async function navigateToSession(projectTree) {
 // Reads a project's sessions and shows the session picker. Returns the chosen
 // session, SESSION_BACK, or null (cancel). If the sessions vanished since we
 // listed them, says so and treats it as a cancel.
-async function pickSession(project, canGoBack) {
+async function pickSession(project, canGoBack, redrawFrame) {
   const sessions = readSessionsInDirectory(project.dataDir);
+
+  redrawFrame();
   if (sessions.length === 0) {
     printEmptyState(
       "That project has no readable sessions.",
