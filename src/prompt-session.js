@@ -4,7 +4,7 @@
 
 import { select, isCancel } from "@clack/prompts";
 
-import { secondary, dim, faint, formatRelativeTime } from "./format.js";
+import { secondary, dim, faint, formatRelativeTime, MENU_INDENT } from "./format.js";
 
 // Sessions whose transcript gave us no usable label show this instead.
 const NO_LABEL_FALLBACK = "(no summary available)";
@@ -26,7 +26,7 @@ export async function promptUserToPickSession(sessions, canGoBack) {
   const menuOptions = [];
 
   if (canGoBack) {
-    menuOptions.push({ value: SESSION_BACK, label: dim("← Back") });
+    menuOptions.push({ value: SESSION_BACK, label: MENU_INDENT + dim("← Back") });
   }
   for (const session of sessions) {
     menuOptions.push(buildSessionOption(session));
@@ -35,6 +35,8 @@ export async function promptUserToPickSession(sessions, canGoBack) {
   const choice = await select({
     message: "Pick a session to resume",
     options: menuOptions,
+    // Start on the first session, not the Back row.
+    initialValue: canGoBack && sessions.length > 0 ? sessions[0] : undefined,
     maxItems: 12,
   });
 
@@ -54,7 +56,7 @@ function buildSessionOption(session) {
   const relativeTime = dim(formatRelativeTime(session.lastActivity));
   const shortId = faint(shortenSessionId(session.id));
 
-  const label = `${labelText}  ${relativeTime}  ${shortId}`;
+  const label = `${MENU_INDENT}${labelText}  ${relativeTime}  ${shortId}`;
 
   return { value: session, label: label };
 }

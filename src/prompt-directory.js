@@ -13,6 +13,7 @@ import {
   secondary,
   padRight,
   shortenHomePath,
+  MENU_INDENT,
 } from "./format.js";
 
 // The kinds of choice this menu can return, so the caller can branch on intent
@@ -38,7 +39,10 @@ export async function promptUserToPickFromFolder(
   const menuOptions = [];
 
   if (canGoBack) {
-    menuOptions.push({ value: { kind: FOLDER_CHOICE.BACK }, label: dim("← Back") });
+    menuOptions.push({
+      value: { kind: FOLDER_CHOICE.BACK },
+      label: MENU_INDENT + dim("← Back"),
+    });
   }
 
   if (hasOwnSessions) {
@@ -56,6 +60,9 @@ export async function promptUserToPickFromFolder(
   const choice = await select({
     message: buildBreadcrumb(currentNode),
     options: menuOptions,
+    // Start the cursor on the first item you can go *into*, not on Back — going
+    // deeper is the common move, so don't make backing out the default.
+    initialValue: firstForwardValue(menuOptions, canGoBack),
     maxItems: 14,
   });
 
@@ -65,11 +72,22 @@ export async function promptUserToPickFromFolder(
   return choice;
 }
 
+// The value of the first row the user can move forward into (the sessions row or
+// the first folder), skipping the Back row. Used so the cursor doesn't start on
+// Back. Returns undefined if there's nothing forward, letting clack pick its own.
+function firstForwardValue(menuOptions, canGoBack) {
+  const firstForwardIndex = canGoBack ? 1 : 0;
+  const firstForward = menuOptions[firstForwardIndex];
+  return firstForward ? firstForward.value : undefined;
+}
+
 // The "▸ N sessions in this folder" row, shown when the current folder is itself
 // a resumable project on top of holding sub-folders.
 function buildOwnSessionsOption(project) {
   let label =
-    accent("▸ ") + secondary(`${pluralizeSessions(project.sessionCount)} in this folder`);
+    MENU_INDENT +
+    accent("▸ ") +
+    secondary(`${pluralizeSessions(project.sessionCount)} in this folder`);
   if (!project.directoryStillExists) {
     label += " " + faint("(directory no longer exists)");
   }
@@ -84,7 +102,7 @@ function buildFolderLabel(folder, nameColumnWidth) {
   // Pad the plain name BEFORE coloring so the badges line up — color codes are
   // invisible characters that would otherwise throw the alignment off.
   const alignedName = accent(padRight(folderName, nameColumnWidth));
-  let label = `${alignedName}  ${dim(`(${pluralizeSessions(folder.totalSessions)})`)}`;
+  let label = `${MENU_INDENT}${alignedName}  ${dim(`(${pluralizeSessions(folder.totalSessions)})`)}`;
 
   // A collapsed target that is itself a resumable project whose directory is gone.
   if (isMissingLeafProject(folder.target)) {

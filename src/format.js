@@ -151,3 +151,7 @@ export function renderHeader(version) {
 export function renderSeparator() {
   return faint("─".repeat(52));
 }
+
+// The indent prepended to every menu row, so the list reads as nested one level
+// under the breadcrumb above it. Shared so both pickers indent identically.
+export const MENU_INDENT = "   ";
