@@ -8,7 +8,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { readSessionsInDirectory } from "../src/read-sessions.js";
+import {
+  readSessionsInDirectory,
+  resolveOriginalProjectPath,
+} from "../src/read-sessions.js";
 
 function makeTempProjectDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), "cc-jump-test-"));
@@ -38,6 +41,72 @@ test("reads sessions and orders them newest activity first", () => {
     assert.equal(sessions[0].label, "Newer session");
     assert.equal(sessions[1].id, "older");
     assert.equal(sessions[1].label, "Older session");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("recovers the real project path from a recorded cwd, dashes and all", () => {
+  // This is the central correctness guarantee: a folder named with dashes
+  // (my-cool-app) must NOT be mangled into /Users/me/my/cool/app. Reading the
+  // recorded cwd gets it exactly right where decoding the name could not.
+  const dir = makeTempProjectDir();
+  try {
+    writeSessionFile(dir, "session", [
+      { type: "user", cwd: "/Users/me/my-cool-app", message: { content: "hi" } },
+    ]);
+    const sessionFiles = [path.join(dir, "session.jsonl")];
+
+    const resolved = resolveOriginalProjectPath(
+      "-Users-me-my-cool-app",
+      sessionFiles
+    );
+
+    assert.equal(resolved, "/Users/me/my-cool-app");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("prefers the cwd recorded in the newest session file", () => {
+  const dir = makeTempProjectDir();
+  try {
+    writeSessionFile(dir, "older", [
+      { type: "user", cwd: "/Users/me/old-location", message: { content: "hi" } },
+    ]);
+    writeSessionFile(dir, "newer", [
+      { type: "user", cwd: "/Users/me/new-location", message: { content: "hi" } },
+    ]);
+
+    // Make "older" genuinely older on disk so the newest-first ordering matters.
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    fs.utimesSync(path.join(dir, "older.jsonl"), oneHourAgo, oneHourAgo);
+
+    const sessionFiles = [
+      path.join(dir, "older.jsonl"),
+      path.join(dir, "newer.jsonl"),
+    ];
+
+    const resolved = resolveOriginalProjectPath("-Users-me-whatever", sessionFiles);
+
+    assert.equal(resolved, "/Users/me/new-location");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("falls back to decoding the name when no session records a cwd", () => {
+  const dir = makeTempProjectDir();
+  try {
+    // No cwd anywhere, so the lossy name decoder is the only option left.
+    writeSessionFile(dir, "session", [
+      { type: "user", message: { content: "hi" } },
+    ]);
+    const sessionFiles = [path.join(dir, "session.jsonl")];
+
+    const resolved = resolveOriginalProjectPath("-Users-me-app", sessionFiles);
+
+    assert.equal(resolved, "/Users/me/app");
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

@@ -20,6 +20,14 @@ test("formatRelativeTime reports very recent times as 'just now'", () => {
   assert.equal(formatRelativeTime(secondsAgo(5)), "just now");
 });
 
+test("formatRelativeTime handles the just-now / minutes boundary cleanly", () => {
+  // The boundaries are where rounding bugs hide, so pin them explicitly.
+  assert.equal(formatRelativeTime(secondsAgo(44)), "just now");
+  assert.equal(formatRelativeTime(secondsAgo(45)), "1 minute ago");
+  assert.equal(formatRelativeTime(secondsAgo(89)), "1 minute ago");
+  assert.equal(formatRelativeTime(secondsAgo(90)), "2 minutes ago");
+});
+
 test("formatRelativeTime uses singular and plural units correctly", () => {
   assert.equal(formatRelativeTime(secondsAgo(60)), "1 minute ago");
   assert.equal(formatRelativeTime(secondsAgo(120)), "2 minutes ago");
