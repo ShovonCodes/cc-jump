@@ -13,7 +13,7 @@ import {
   secondary,
   padRight,
   shortenHomePath,
-  MENU_INDENT,
+  menuIndent,
 } from "./format.js";
 
 // The kinds of choice this menu can return, so the caller can branch on intent
@@ -29,31 +29,34 @@ export const FOLDER_CHOICE = {
 const MAX_NAME_COLUMN_WIDTH = 50;
 
 // Shows the menu for one folder and returns the chosen action, or null if the
-// user cancelled (Esc / Ctrl+C).
+// user cancelled (Esc / Ctrl+C). `depth` is how many folders deep we've
+// navigated, used to indent the list so the hierarchy is visible.
 export async function promptUserToPickFromFolder(
   currentNode,
   childFolders,
   hasOwnSessions,
-  canGoBack
+  canGoBack,
+  depth
 ) {
+  const indent = menuIndent(depth + 1);
   const menuOptions = [];
 
   if (canGoBack) {
     menuOptions.push({
       value: { kind: FOLDER_CHOICE.BACK },
-      label: MENU_INDENT + dim("← Back"),
+      label: indent + dim("← Back"),
     });
   }
 
   if (hasOwnSessions) {
-    menuOptions.push(buildOwnSessionsOption(currentNode.project));
+    menuOptions.push(buildOwnSessionsOption(currentNode.project, indent));
   }
 
   const nameColumnWidth = computeLongestNameWidth(childFolders);
   for (const folder of childFolders) {
     menuOptions.push({
       value: { kind: FOLDER_CHOICE.FOLDER, target: folder.target },
-      label: buildFolderLabel(folder, nameColumnWidth),
+      label: buildFolderLabel(folder, nameColumnWidth, indent),
     });
   }
 
@@ -83,9 +86,9 @@ function firstForwardValue(menuOptions, canGoBack) {
 
 // The "▸ N sessions in this folder" row, shown when the current folder is itself
 // a resumable project on top of holding sub-folders.
-function buildOwnSessionsOption(project) {
+function buildOwnSessionsOption(project, indent) {
   let label =
-    MENU_INDENT +
+    indent +
     accent("▸ ") +
     secondary(`${pluralizeSessions(project.sessionCount)} in this folder`);
   if (!project.directoryStillExists) {
@@ -96,13 +99,13 @@ function buildOwnSessionsOption(project) {
 
 // One folder row: the (possibly collapsed) name in the accent color, a trailing
 // slash to read as a folder, then an aligned, dimmed total-sessions badge.
-function buildFolderLabel(folder, nameColumnWidth) {
+function buildFolderLabel(folder, nameColumnWidth, indent) {
   const folderName = folder.label + "/";
 
   // Pad the plain name BEFORE coloring so the badges line up — color codes are
   // invisible characters that would otherwise throw the alignment off.
   const alignedName = accent(padRight(folderName, nameColumnWidth));
-  let label = `${MENU_INDENT}${alignedName}  ${dim(`(${pluralizeSessions(folder.totalSessions)})`)}`;
+  let label = `${indent}${alignedName}  ${dim(`(${pluralizeSessions(folder.totalSessions)})`)}`;
 
   // A collapsed target that is itself a resumable project whose directory is gone.
   if (isMissingLeafProject(folder.target)) {

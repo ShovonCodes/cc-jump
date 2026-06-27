@@ -4,7 +4,7 @@
 
 import { select, isCancel } from "@clack/prompts";
 
-import { secondary, dim, faint, formatRelativeTime, MENU_INDENT } from "./format.js";
+import { secondary, dim, faint, formatRelativeTime, menuIndent } from "./format.js";
 
 // Sessions whose transcript gave us no usable label show this instead.
 const NO_LABEL_FALLBACK = "(no summary available)";
@@ -21,15 +21,17 @@ export const SESSION_BACK = Symbol("session-back");
 // Shows the session menu and returns the chosen session object, SESSION_BACK if
 // the user backed out to the folder menu, or null if they cancelled entirely.
 // `canGoBack` controls whether the Back row is offered (it isn't when there's no
-// folder menu above this one).
-export async function promptUserToPickSession(sessions, canGoBack) {
+// folder menu above this one). `depth` indents the list to match the folder it
+// belongs to.
+export async function promptUserToPickSession(sessions, canGoBack, depth) {
+  const indent = menuIndent(depth + 1);
   const menuOptions = [];
 
   if (canGoBack) {
-    menuOptions.push({ value: SESSION_BACK, label: MENU_INDENT + dim("← Back") });
+    menuOptions.push({ value: SESSION_BACK, label: indent + dim("← Back") });
   }
   for (const session of sessions) {
-    menuOptions.push(buildSessionOption(session));
+    menuOptions.push(buildSessionOption(session, indent));
   }
 
   const choice = await select({
@@ -48,7 +50,7 @@ export async function promptUserToPickSession(sessions, canGoBack) {
 
 // Builds one session row. Real labels read in soft white; the fallback reads in
 // faint grey so it's clearly a placeholder, not a real title.
-function buildSessionOption(session) {
+function buildSessionOption(session, indent) {
   const labelText = session.label
     ? secondary(truncate(session.label, MAX_LABEL_LENGTH))
     : faint(NO_LABEL_FALLBACK);
@@ -56,7 +58,7 @@ function buildSessionOption(session) {
   const relativeTime = dim(formatRelativeTime(session.lastActivity));
   const shortId = faint(shortenSessionId(session.id));
 
-  const label = `${MENU_INDENT}${labelText}  ${relativeTime}  ${shortId}`;
+  const label = `${indent}${labelText}  ${relativeTime}  ${shortId}`;
 
   return { value: session, label: label };
 }

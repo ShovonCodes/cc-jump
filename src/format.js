@@ -152,6 +152,14 @@ export function renderSeparator() {
   return faint("─".repeat(52));
 }
 
-// The indent prepended to every menu row, so the list reads as nested one level
-// under the breadcrumb above it. Shared so both pickers indent identically.
-export const MENU_INDENT = "   ";
+// The indent prepended to menu rows grows with how deep you've navigated, so the
+// list visibly steps to the right each level down — making the parent/child
+// hierarchy obvious at a glance. We cap the depth so very deep paths (like nested
+// worktrees) can't push the list off the right edge of the screen.
+const MENU_INDENT_UNIT = "  ";
+const MAX_INDENT_LEVELS = 6;
+
+export function menuIndent(level) {
+  const cappedLevel = Math.min(Math.max(level, 0), MAX_INDENT_LEVELS);
+  return MENU_INDENT_UNIT.repeat(cappedLevel);
+}

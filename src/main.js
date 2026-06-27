@@ -103,6 +103,7 @@ async function navigateToSession(projectTree, redrawFrame) {
       const session = await pickSession(
         currentNode.project,
         folderStack.length > 0,
+        folderStack.length,
         redrawFrame
       );
       if (session === null) {
@@ -120,7 +121,8 @@ async function navigateToSession(projectTree, redrawFrame) {
       currentNode,
       childFolders,
       hasOwnSessions,
-      folderStack.length > 0
+      folderStack.length > 0,
+      folderStack.length
     );
 
     if (choice === null) {
@@ -136,7 +138,12 @@ async function navigateToSession(projectTree, redrawFrame) {
       continue;
     }
     if (choice.kind === FOLDER_CHOICE.SESSIONS) {
-      const session = await pickSession(currentNode.project, true, redrawFrame);
+      const session = await pickSession(
+        currentNode.project,
+        true,
+        folderStack.length,
+        redrawFrame
+      );
       if (session === null) {
         return null;
       }
@@ -151,7 +158,7 @@ async function navigateToSession(projectTree, redrawFrame) {
 // Reads a project's sessions and shows the session picker. Returns the chosen
 // session, SESSION_BACK, or null (cancel). If the sessions vanished since we
 // listed them, says so and treats it as a cancel.
-async function pickSession(project, canGoBack, redrawFrame) {
+async function pickSession(project, canGoBack, depth, redrawFrame) {
   const sessions = readSessionsInDirectory(project.dataDir);
 
   redrawFrame();
@@ -162,7 +169,7 @@ async function pickSession(project, canGoBack, redrawFrame) {
     );
     return null;
   }
-  return promptUserToPickSession(sessions, canGoBack);
+  return promptUserToPickSession(sessions, canGoBack, depth);
 }
 
 // Launches Claude Code for the chosen session, after the last two safety checks.
