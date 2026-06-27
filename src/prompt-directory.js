@@ -42,9 +42,10 @@ export async function promptUserToPickFromFolder(
   const menuOptions = [];
 
   if (canGoBack) {
+    // Back goes up a level, so it isn't indented with the children below it.
     menuOptions.push({
       value: { kind: FOLDER_CHOICE.BACK },
-      label: indent + dim("← Back"),
+      label: dim("← Back"),
     });
   }
 

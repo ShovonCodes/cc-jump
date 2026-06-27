@@ -28,7 +28,8 @@ export async function promptUserToPickSession(sessions, canGoBack, depth) {
   const menuOptions = [];
 
   if (canGoBack) {
-    menuOptions.push({ value: SESSION_BACK, label: indent + dim("← Back") });
+    // Back goes up a level, so it isn't indented with the sessions below it.
+    menuOptions.push({ value: SESSION_BACK, label: dim("← Back") });
   }
   for (const session of sessions) {
     menuOptions.push(buildSessionOption(session, indent));
