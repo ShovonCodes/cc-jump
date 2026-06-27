@@ -139,11 +139,22 @@ export function menuIndent(level) {
   return MENU_INDENT_UNIT.repeat(cappedLevel);
 }
 
-// Controls line pinned to the bottom of the screen as a footer (see main.js).
+// The controls line shown beneath the menu (see drawMenuFooter).
 export function renderControlsHint() {
   return (
     dim("↑↓") + faint(" move   ") +
     dim("↵") + faint(" select   ") +
     dim("esc") + faint(" / ") + dim("ctrl+c") + faint(" quit")
   );
+}
+
+// Draws the controls hint one line below the cursor — clack leaves the cursor at
+// the bottom of its menu after each render, so this lands right under the list.
+// We save/restore the cursor so clack's own redraws stay aligned. clack erases
+// downward when it repaints, so main re-runs this after every keypress.
+export function drawMenuFooter() {
+  if (!process.stdout.isTTY) {
+    return;
+  }
+  process.stdout.write("\x1b7\x1b[1B\r\x1b[2K  " + renderControlsHint() + "\x1b8");
 }

@@ -6,7 +6,7 @@ import readline from "node:readline";
 
 import {
   renderHeader,
-  renderControlsHint,
+  drawMenuFooter,
   amber,
   error,
   secondary,
@@ -62,8 +62,12 @@ export async function main() {
   const redrawFrame = () => {
     clearScreen();
     console.log(renderHeader(version));
-    drawFooterHint();
   };
+
+  // The controls footer is drawn just below each menu and redrawn after every
+  // keypress (clack erases below its frame when it repaints). This flag stops
+  // those redraws once navigation is over.
+  footerEnabled = true;
 
   // clack only treats Ctrl+C as quit; make Esc quit too.
   const stopEscapeToQuit = installEscapeToQuit();
@@ -71,6 +75,7 @@ export async function main() {
   try {
     chosen = await navigateToSession(projectTree, redrawFrame);
   } finally {
+    footerEnabled = false;
     stopEscapeToQuit();
   }
 
@@ -81,7 +86,21 @@ export async function main() {
   await resumeChosenSession(chosen.project, chosen.session);
 }
 
-// Esc quits during the menus. clack 0.7 ignores Esc, so we feed it the Ctrl+C it
+// True only while the menus are on screen, so stray keypress redraws don't paint
+// a footer over the resume line or after exit.
+let footerEnabled = false;
+
+// Draws the footer once clack has painted (next tick), if menus are still up.
+function scheduleFooterDraw() {
+  setImmediate(() => {
+    if (footerEnabled) {
+      drawMenuFooter();
+    }
+  });
+}
+
+// Esc quits during the menus, and every keypress reschedules the footer so it
+// survives clack's repaints. clack 0.7 ignores Esc, so we feed it the Ctrl+C it
 // understands — clack then runs its own clean teardown instead of us exiting
 // mid-prompt. Returns a function that removes the listener.
 function installEscapeToQuit() {
@@ -93,7 +112,9 @@ function installEscapeToQuit() {
   const onKeypress = (character, key) => {
     if (key && key.name === "escape") {
       process.stdin.emit("keypress", "\x03", { name: "c", ctrl: true });
+      return;
     }
+    scheduleFooterDraw();
   };
 
   process.stdin.on("keypress", onKeypress);
@@ -105,20 +126,6 @@ function clearScreen() {
   if (process.stdout.isTTY) {
     process.stdout.write("\x1b[2J\x1b[H");
   }
-}
-
-// Pins the controls hint to the bottom row as a footer. We save the cursor, jump
-// to the last row to draw, then restore — so the menu clack draws next sits above
-// the footer, and its per-keypress redraws (which only touch its own frame) leave
-// the footer untouched.
-function drawFooterHint() {
-  if (!process.stdout.isTTY) {
-    return;
-  }
-  const lastRow = process.stdout.rows || 24;
-  process.stdout.write(
-    "\x1b7" + `\x1b[${lastRow};1H` + "\x1b[2K  " + renderControlsHint() + "\x1b8"
-  );
 }
 
 // Walks down the folder tree and back up until a session is picked. Returns
@@ -151,6 +158,7 @@ async function navigateToSession(projectTree, redrawFrame) {
     }
 
     redrawFrame();
+    scheduleFooterDraw();
     const choice = await promptUserToPickFromFolder(
       currentNode,
       childFolders,
@@ -202,6 +210,7 @@ async function pickSession(project, canGoBack, depth, redrawFrame) {
     );
     return null;
   }
+  scheduleFooterDraw();
   return promptUserToPickSession(sessions, canGoBack, depth);
 }
 
