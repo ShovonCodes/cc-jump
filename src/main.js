@@ -1,7 +1,5 @@
-// main.js — the conductor. It runs the whole flow end to end: show the header,
-// let the user drill down through the project tree, pick a session, and hand off
-// to Claude Code. Every "what could go wrong" check lives here so the individual
-// steps can stay simple and assume they're given good data.
+// The conductor: show the header, let the user drill through the project tree,
+// pick a session, and hand off to Claude Code. All the edge-case checks live here.
 
 import fs from "node:fs";
 import readline from "node:readline";
@@ -35,7 +33,7 @@ import { isClaudeAvailable, resumeSession } from "./resume-session.js";
 export async function main() {
   const version = readOwnVersion();
 
-  // Edge case: Claude Code has never been run, so there's no data directory yet.
+  // Claude Code has never been run — no data directory yet.
   if (!projectsRootExists()) {
     console.log(renderHeader(version));
     printEmptyState(
@@ -47,7 +45,7 @@ export async function main() {
 
   const projectDirectories = findProjectDirectories();
 
-  // Edge case: the data directory exists but every project inside it is empty.
+  // Data directory exists but every project inside it is empty.
   if (projectDirectories.length === 0) {
     console.log(renderHeader(version));
     printEmptyState(
@@ -59,15 +57,12 @@ export async function main() {
 
   const projectTree = buildProjectTree(projectDirectories);
 
-  // Redraw the header at the top of a freshly cleared screen before every menu,
-  // so stepping in and out of folders updates the view in place instead of
-  // leaving a trail of finished menus scrolling down the terminal. We clear only
-  // the visible screen (2J, not 3J), so whatever you had before running cc-jump
-  // is still a scroll away.
+  // Redraw before each menu so navigation updates in place instead of leaving a
+  // trail. We clear only the visible screen (2J, not 3J), keeping scrollback.
   const redrawFrame = () => {
     clearScreen();
     console.log(renderHeader(version));
-    console.log(renderControlsHint() + "\n");
+    drawFooterHint();
   };
 
   // clack only treats Ctrl+C as quit; make Esc quit too.
@@ -80,17 +75,15 @@ export async function main() {
   }
 
   if (!chosen) {
-    return; // User cancelled — exit quietly.
+    return; // Cancelled.
   }
 
   await resumeChosenSession(chosen.project, chosen.session);
 }
 
-// Makes the Esc key quit during the menus. clack 0.7 ignores Esc and only acts
-// on Ctrl+C, so we listen for Esc ourselves and feed clack the Ctrl+C keypress
-// it does understand — that way clack runs its own clean teardown (restoring the
-// cursor and raw mode) instead of us exiting abruptly mid-prompt. Returns a
-// function that removes the listener again.
+// Esc quits during the menus. clack 0.7 ignores Esc, so we feed it the Ctrl+C it
+// understands — clack then runs its own clean teardown instead of us exiting
+// mid-prompt. Returns a function that removes the listener.
 function installEscapeToQuit() {
   if (!process.stdin.isTTY) {
     return () => {};
@@ -107,20 +100,30 @@ function installEscapeToQuit() {
   return () => process.stdin.off("keypress", onKeypress);
 }
 
-// Clears the visible screen and moves the cursor home so the next menu redraws
-// in the same place. Only meaningful on a real terminal.
+// Clears the visible screen and homes the cursor so the next menu redraws in place.
 function clearScreen() {
   if (process.stdout.isTTY) {
     process.stdout.write("\x1b[2J\x1b[H");
   }
 }
 
-// Walks the user down through the folder tree and back up again until they pick
-// a session. Returns { project, session }, or null if they cancelled.
-//
-// `stack` holds the folders we descended through so "Back" can pop up one level.
-// We start at the first folder worth showing — single-child chains near the root
-// (like /Users/me) are skipped so the first menu offers a real choice.
+// Pins the controls hint to the bottom row as a footer. We save the cursor, jump
+// to the last row to draw, then restore — so the menu clack draws next sits above
+// the footer, and its per-keypress redraws (which only touch its own frame) leave
+// the footer untouched.
+function drawFooterHint() {
+  if (!process.stdout.isTTY) {
+    return;
+  }
+  const lastRow = process.stdout.rows || 24;
+  process.stdout.write(
+    "\x1b7" + `\x1b[${lastRow};1H` + "\x1b[2K  " + renderControlsHint() + "\x1b8"
+  );
+}
+
+// Walks down the folder tree and back up until a session is picked. Returns
+// { project, session } or null if cancelled. `folderStack` lets Back pop up a
+// level; the start node skips single-child chains so the first menu has a choice.
 async function navigateToSession(projectTree, redrawFrame) {
   let currentNode = collapseToPresentable(projectTree);
   const folderStack = [];
@@ -129,8 +132,7 @@ async function navigateToSession(projectTree, redrawFrame) {
     const childFolders = listChildFolders(currentNode);
     const hasOwnSessions = currentNode.project !== null;
 
-    // A folder with sessions and no sub-folders is a leaf project: skip the
-    // folder menu entirely and go straight to its sessions.
+    // Leaf project (sessions, no sub-folders): skip the menu, show sessions.
     if (hasOwnSessions && childFolders.length === 0) {
       const session = await pickSession(
         currentNode.project,
@@ -180,16 +182,15 @@ async function navigateToSession(projectTree, redrawFrame) {
         return null;
       }
       if (session === SESSION_BACK) {
-        continue; // Back to this same folder's menu.
+        continue; // Back to this folder's menu.
       }
       return { project: currentNode.project, session: session };
     }
   }
 }
 
-// Reads a project's sessions and shows the session picker. Returns the chosen
-// session, SESSION_BACK, or null (cancel). If the sessions vanished since we
-// listed them, says so and treats it as a cancel.
+// Reads a project's sessions and shows the picker. Returns the session,
+// SESSION_BACK, or null. Treats a vanished-since-listed project as a cancel.
 async function pickSession(project, canGoBack, depth, redrawFrame) {
   const sessions = readSessionsInDirectory(project.dataDir);
 
@@ -206,9 +207,8 @@ async function pickSession(project, canGoBack, depth, redrawFrame) {
 
 // Launches Claude Code for the chosen session, after the last two safety checks.
 async function resumeChosenSession(project, session) {
-  // Edge case: the session data still exists, but the directory it belongs to is
-  // gone. `claude --resume` is scoped to that directory, so we can't run it from
-  // anywhere else — fail clearly instead of launching into the wrong place.
+  // The session data exists but its directory is gone. `claude --resume` is
+  // scoped to that directory, so fail clearly instead of launching elsewhere.
   if (!project.directoryStillExists) {
     printError(
       "Can't resume — the original project directory no longer exists:\n  " +
@@ -217,7 +217,6 @@ async function resumeChosenSession(project, session) {
     return;
   }
 
-  // Edge case: the claude CLI isn't installed or isn't on PATH.
   if (!isClaudeAvailable()) {
     printError(
       "claude CLI not found. Install it with:\n  npm install -g @anthropic-ai/claude-code"
@@ -230,15 +229,12 @@ async function resumeChosenSession(project, session) {
   try {
     process.exitCode = await resumeSession(project.originalPath, session.id);
   } catch (launchError) {
-    // claude failed to even start. Explain why, so the user isn't left with a
-    // bare "Resuming…" line and a silent exit.
     process.exitCode = 1;
     printError(describeLaunchFailure(launchError, project.originalPath));
   }
 }
 
-// Turns a failure to launch claude into a clear, actionable message based on the
-// underlying error code.
+// A clear, actionable message for a failure to launch claude.
 function describeLaunchFailure(launchError, originalPath) {
   const code = launchError && launchError.code;
 
@@ -259,25 +255,20 @@ function describeLaunchFailure(launchError, originalPath) {
   return `Couldn't launch claude: ${reason}`;
 }
 
-// The amber confirmation line shown just before Claude Code takes over.
 function printResumingLine(originalPath) {
   console.log("\n" + amber(`↪ Resuming session in ${shortenHomePath(originalPath)}…`));
 }
 
-// A friendly two-line empty state: what happened, then a hint about what to do.
 function printEmptyState(message, hint) {
   console.log("\n" + secondary(message));
   console.log(faint(hint) + "\n");
 }
 
-// A clear, red error message. Goes to stderr so it doesn't get mixed into normal
-// output if someone pipes this tool somewhere.
+// Errors go to stderr so they don't mix into piped output.
 function printError(message) {
   console.error("\n" + error("✖ " + message) + "\n");
 }
 
-// Reads this package's own version out of package.json so the header always shows
-// the real installed version. Falls back gracefully if it can't be read.
 function readOwnVersion() {
   try {
     const packageJsonUrl = new URL("../package.json", import.meta.url);

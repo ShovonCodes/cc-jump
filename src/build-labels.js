@@ -1,16 +1,9 @@
-// build-labels.js — turns the raw records of a session transcript into one short,
-// human-readable label. This lives in its own module because the rules for what
-// makes a good label are the most likely thing to change as Claude Code evolves
-// its transcript format, and we want that change to be isolated to one file.
+// Turns a session transcript's records into one short label. Isolated here
+// because the labelling rules are the most likely thing to change as Claude
+// Code's transcript format evolves.
 
-// Given every parsed record from a session's .jsonl file, return the best label
-// we can find, or null if the file gave us nothing usable. The caller decides
-// what to show in the null case.
-//
-// We try three sources, best first:
-//   1. "ai-title"  — a concise title Claude Code generates for the session.
-//   2. "summary"   — an older transcript format we still support for back-compat.
-//   3. the first user message — whatever the person typed to start the session.
+// Best label we can find, or null. Tries, in order: the generated ai-title, a
+// legacy summary record, then the first user message.
 export function buildSessionLabel(records) {
   const aiTitle = findLatestAiTitle(records);
   if (aiTitle) {
@@ -30,9 +23,7 @@ export function buildSessionLabel(records) {
   return null;
 }
 
-// Claude Code may rewrite the session's title as the conversation grows, so the
-// last "ai-title" record is the most current one. We walk the whole list and
-// keep the last non-empty title we see.
+// The title may be rewritten as the chat grows, so keep the last non-empty one.
 function findLatestAiTitle(records) {
   let latestTitle = null;
   for (const record of records) {
@@ -43,8 +34,7 @@ function findLatestAiTitle(records) {
   return latestTitle;
 }
 
-// Older Claude Code transcripts stored a "summary" record instead of an
-// "ai-title". We read the first one we find for those legacy sessions.
+// Older transcripts used a "summary" record instead of "ai-title".
 function findLegacySummary(records) {
   for (const record of records) {
     if (record.type === "summary" && record.summary) {
@@ -54,8 +44,6 @@ function findLegacySummary(records) {
   return null;
 }
 
-// Falls back to the text of the first message the user sent. This is what people
-// remember a session by when no title was ever generated.
 function findFirstUserMessageText(records) {
   for (const record of records) {
     if (record.type !== "user" || !record.message) {
@@ -69,10 +57,7 @@ function findFirstUserMessageText(records) {
   return null;
 }
 
-// A message's content is sometimes a plain string and sometimes an array of
-// content blocks (text, tool results, images, ...). We handle both, and from an
-// array we take the first actual text block — tool output and images make poor
-// labels.
+// Content is a string or an array of blocks; take the first real text block.
 function extractTextFromMessageContent(content) {
   if (typeof content === "string") {
     return content.trim() || null;
@@ -92,8 +77,7 @@ function extractTextFromMessageContent(content) {
   return null;
 }
 
-// Collapses newlines and runs of whitespace into single spaces so a label always
-// renders as one tidy line, no matter how the original message was formatted.
+// Collapse whitespace so the label is always one tidy line.
 function collapseWhitespace(text) {
   return text.replace(/\s+/g, " ").trim();
 }

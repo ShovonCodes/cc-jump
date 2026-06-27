@@ -1,8 +1,6 @@
 #!/usr/bin/env node
-// bin/cc-jump.js — the CLI entry point. Its only job is to start the app and make
-// sure that any unexpected error exits cleanly, with a short message instead of a
-// scary stack trace. (Ctrl+C inside a prompt is handled by the prompt library;
-// outside one, Node exits cleanly on its own.)
+// CLI entry point: start the app and turn any unexpected error into a short
+// message instead of a stack trace.
 
 import { main } from "../src/main.js";
 

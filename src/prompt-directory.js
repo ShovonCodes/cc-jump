@@ -1,8 +1,6 @@
-// prompt-directory.js — the folder navigation menu. It shows one level of the
-// project tree at a time: the child folders, an optional "sessions in this
-// folder" row when the current folder has its own sessions, and a Back row when
-// there's somewhere to go back to. It reports what the user chose so the
-// navigation loop in main can descend, open sessions, or step back up.
+// The folder navigation menu: one level of the tree at a time — child folders,
+// an optional "sessions in this folder" row, and a Back row. Reports the choice
+// back to the navigation loop.
 
 import { select, isCancel } from "@clack/prompts";
 
@@ -16,21 +14,17 @@ import {
   menuIndent,
 } from "./format.js";
 
-// The kinds of choice this menu can return, so the caller can branch on intent
-// rather than guessing from the shape of the value.
 export const FOLDER_CHOICE = {
   BACK: "back",
   FOLDER: "folder",
   SESSIONS: "sessions",
 };
 
-// Widest a folder-name column is allowed to get before the count badges stop
-// aligning to it, so one deep collapsed path can't shove every badge off-screen.
+// Cap so one deep collapsed path can't push every badge off-screen.
 const MAX_NAME_COLUMN_WIDTH = 50;
 
-// Shows the menu for one folder and returns the chosen action, or null if the
-// user cancelled (Esc / Ctrl+C). `depth` is how many folders deep we've
-// navigated, used to indent the list so the hierarchy is visible.
+// Shows one folder's menu; returns the chosen action or null if cancelled.
+// `depth` is how many folders deep we are, used to indent the list.
 export async function promptUserToPickFromFolder(
   currentNode,
   childFolders,
@@ -64,8 +58,7 @@ export async function promptUserToPickFromFolder(
   const choice = await select({
     message: buildBreadcrumb(currentNode),
     options: menuOptions,
-    // Start the cursor on the first item you can go *into*, not on Back — going
-    // deeper is the common move, so don't make backing out the default.
+    // Start on the first item you can go into, not Back — going deeper is common.
     initialValue: firstForwardValue(menuOptions, canGoBack),
     maxItems: 14,
   });
@@ -76,17 +69,14 @@ export async function promptUserToPickFromFolder(
   return choice;
 }
 
-// The value of the first row the user can move forward into (the sessions row or
-// the first folder), skipping the Back row. Used so the cursor doesn't start on
-// Back. Returns undefined if there's nothing forward, letting clack pick its own.
+// First non-Back row's value, so the cursor doesn't start on Back.
 function firstForwardValue(menuOptions, canGoBack) {
   const firstForwardIndex = canGoBack ? 1 : 0;
   const firstForward = menuOptions[firstForwardIndex];
   return firstForward ? firstForward.value : undefined;
 }
 
-// The "▸ N sessions in this folder" row, shown when the current folder is itself
-// a resumable project on top of holding sub-folders.
+// The "▸ N sessions in this folder" row, for a folder that is itself a project.
 function buildOwnSessionsOption(project, indent) {
   let label =
     indent +
@@ -98,17 +88,13 @@ function buildOwnSessionsOption(project, indent) {
   return { value: { kind: FOLDER_CHOICE.SESSIONS }, label: label };
 }
 
-// One folder row: the (possibly collapsed) name in the accent color, a trailing
-// slash to read as a folder, then an aligned, dimmed total-sessions badge.
 function buildFolderLabel(folder, nameColumnWidth, indent) {
   const folderName = folder.label + "/";
 
-  // Pad the plain name BEFORE coloring so the badges line up — color codes are
-  // invisible characters that would otherwise throw the alignment off.
+  // Pad before coloring so badges align (color codes are invisible characters).
   const alignedName = accent(padRight(folderName, nameColumnWidth));
   let label = `${indent}${alignedName}  ${dim(`(${pluralizeSessions(folder.totalSessions)})`)}`;
 
-  // A collapsed target that is itself a resumable project whose directory is gone.
   if (isMissingLeafProject(folder.target)) {
     label += " " + faint("(directory no longer exists)");
   }
@@ -123,7 +109,6 @@ function isMissingLeafProject(targetNode) {
   );
 }
 
-// "1 session" vs "3 sessions".
 function pluralizeSessions(count) {
   const noun = count === 1 ? "session" : "sessions";
   return `${count} ${noun}`;
@@ -140,8 +125,8 @@ function computeLongestNameWidth(childFolders) {
   return Math.min(longest, MAX_NAME_COLUMN_WIDTH);
 }
 
-// The location line, e.g. "~ › projects › cuttingroom" — ancestors dimmed, the
-// current folder in the accent color so you always know where you are.
+// The location line, e.g. "~ › projects › personal" — ancestors dimmed, current
+// folder in the accent color.
 function buildBreadcrumb(node) {
   const segments = shortenHomePath(node.fullPath)
     .split("/")
