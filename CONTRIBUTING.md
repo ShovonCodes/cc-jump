@@ -33,7 +33,7 @@ Keep it readable: clear names, one job per function, and comments that explain *
 - **Color themes** — everything lives in `src/format.js`.
 - **More session metadata** — git branch, message count, last prompt; the data is already in each transcript.
 - **New transcript formats** — update the rules in `src/build-labels.js`.
-- **Screenshots / demo GIFs** for the README.
+- **Screenshots / demo GIFs** — drop a recording at `assets/demo.gif` (see `assets/README.md`).
 
 ## Submitting
 

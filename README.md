@@ -1,8 +1,19 @@
-# cc-jump
+<h1 align="center">cc-jump</h1>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+<p align="center">
+  Browse and resume your <a href="https://claude.com/claude-code">Claude Code</a> sessions, organized by the project they belong to.
+</p>
 
-Browse and resume your [Claude Code](https://claude.com/claude-code) sessions, organized by the project they belong to.
+<p align="center">
+  <a href="https://www.npmjs.com/package/cc-jump"><img src="https://img.shields.io/npm/v/cc-jump.svg?color=2dd4bf" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/cc-jump"><img src="https://img.shields.io/npm/dm/cc-jump.svg?color=2dd4bf" alt="npm downloads"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/npm/l/cc-jump.svg?color=2dd4bf" alt="MIT license"></a>
+  <img src="https://img.shields.io/node/v/cc-jump.svg?color=2dd4bf" alt="node version">
+</p>
+
+<!-- Demo: record the flow, save it to assets/demo.gif, and replace the line
+     below with: <p align="center"><img src="assets/demo.gif" alt="cc-jump demo" width="720"></p> -->
+<p align="center"><em>📹 Demo GIF coming soon — contributions welcome.</em></p>
 
 ```bash
 npx cc-jump
@@ -38,7 +49,7 @@ It works out each project's real path by reading the working directory recorded 
 
 ## Contributing
 
-I built this for myself, but if it helps you too, that's the point. The code is kept small and readable on purpose, so it's easy to pick up — see [CONTRIBUTING.md](./CONTRIBUTING.md). Screenshots and demo GIFs are welcome (there are none yet).
+I built this for myself, but if it helps you too, that's the point. The code is kept small and readable on purpose, so it's easy to pick up — see [CONTRIBUTING.md](./CONTRIBUTING.md). A demo GIF is the most-wanted contribution right now — drop one at `assets/demo.gif`.
 
 ## Similar tools
 
