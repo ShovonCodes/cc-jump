@@ -4,7 +4,7 @@
   "description": "Browse and resume Claude Code sessions organized by project directory",
   "type": "module",
   "bin": {
-    "cc-jump": "./bin/cc-jump.js"
+    "cc-jump": "bin/cc-jump.js"
   },
   "files": [
     "bin/",
