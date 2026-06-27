@@ -1,0 +1,43 @@
+{
+  "name": "cc-jump",
+  "version": "0.1.0",
+  "description": "Browse and resume Claude Code sessions organized by project directory",
+  "type": "module",
+  "bin": {
+    "cc-jump": "./bin/cc-jump.js"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "start": "node ./bin/cc-jump.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.7.0"
+  },
+  "license": "MIT",
+  "author": "Shovon",
+  "homepage": "https://github.com/shovon/cc-jump#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shovon/cc-jump.git"
+  },
+  "bugs": {
+    "url": "https://github.com/shovon/cc-jump/issues"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "cli",
+    "sessions",
+    "developer-tools",
+    "anthropic"
+  ]
+}
