@@ -26,10 +26,11 @@ Each file does one job and says so in a comment at the top:
 | File | What it does |
 | --- | --- |
 | `bin/cc-jump.js` | The entry point. Starts the app and keeps errors clean. |
-| `src/main.js` | The conductor — runs the whole flow and handles every edge case. |
+| `src/main.js` | The conductor — runs the navigation loop and handles every edge case. |
 | `src/read-sessions.js` | Everything that touches the filesystem: finds and parses sessions. |
+| `src/build-tree.js` | Turns the flat project list into the navigable folder tree (pure data). |
 | `src/build-labels.js` | Turns a transcript into a short, readable label. |
-| `src/prompt-directory.js` | The "pick a project" menu. |
+| `src/prompt-directory.js` | The folder navigation menu (drill down / back). |
 | `src/prompt-session.js` | The "pick a session" menu. |
 | `src/resume-session.js` | Checks for the `claude` CLI and launches the resume. |
 | `src/format.js` | All colors and text formatting in one place. |

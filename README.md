@@ -14,18 +14,18 @@ No install, no config. Run that one command from anywhere.
 
 If you use Claude Code across a handful of projects, you end up with a lot of sessions spread across a lot of directories. Claude Code's built-in `/resume` is scoped to whatever directory you happen to be standing in, and it shows everything in one flat list. There's no way to start from a bird's-eye view, see all your projects, and jump into the one you want.
 
-`cc-jump` is that bird's-eye view. It shows you your projects, you pick one, you pick a session inside it, and it drops you straight back into that session — in the right directory — as if you'd typed the resume command yourself.
+`cc-jump` is that bird's-eye view. Instead of one long flat list, it groups your sessions into the folder tree they actually live in, so you drill down a level at a time — `projects/` → `personal/` → `cc-jump` — until you reach a session. You pick it, and it drops you straight back into that session — in the right directory — as if you'd typed the resume command yourself.
 
 ```
 npx cc-jump
-  → a list of projects that have sessions
-  → pick a project
-  → a list of sessions in that project (with titles and timestamps)
+  → the folders that hold your projects (projects/, work/, …)
+  → drill down one level at a time (personal/, cuttingroom/, …)
+  → reach a project, see its sessions (with titles and timestamps)
   → pick a session
   → you're back in Claude Code, resumed, in the right directory
 ```
 
-The whole thing takes a few seconds and you never have to remember a path or scroll a flat list.
+Folders with a single child are skipped automatically, so every menu offers a real choice. A folder that has its own sessions *and* sub-projects (like a repo with git worktrees) shows both. `←  Back` is always there to step up a level. The whole thing takes a few seconds and you never have to remember a path or scroll a flat list.
 
 ## How it works
 
@@ -38,6 +38,8 @@ To label each session, `cc-jump` looks inside the transcript for, in order of pr
 1. the title Claude Code generated for the session (`ai-title`),
 2. an older-style `summary` record (for sessions created before that format existed),
 3. the first thing you typed, as a fallback.
+
+With every project's real path in hand, `cc-jump` arranges them into the folder tree they share and lets you browse it a level at a time, rather than listing every full path at once. Levels that have only one child are collapsed away so each menu is a genuine choice.
 
 When you pick a session, `cc-jump` runs `claude --resume <session-id>` for you, with the working directory set to that project's real path. It hands your terminal directly to Claude Code, so it feels exactly like you launched it yourself.
 
