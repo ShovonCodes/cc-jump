@@ -4,9 +4,11 @@
 // steps can stay simple and assume they're given good data.
 
 import fs from "node:fs";
+import readline from "node:readline";
 
 import {
   renderHeader,
+  renderControlsHint,
   amber,
   error,
   secondary,
@@ -65,14 +67,44 @@ export async function main() {
   const redrawFrame = () => {
     clearScreen();
     console.log(renderHeader(version));
+    console.log(renderControlsHint() + "\n");
   };
 
-  const chosen = await navigateToSession(projectTree, redrawFrame);
+  // clack only treats Ctrl+C as quit; make Esc quit too.
+  const stopEscapeToQuit = installEscapeToQuit();
+  let chosen;
+  try {
+    chosen = await navigateToSession(projectTree, redrawFrame);
+  } finally {
+    stopEscapeToQuit();
+  }
+
   if (!chosen) {
     return; // User cancelled — exit quietly.
   }
 
   await resumeChosenSession(chosen.project, chosen.session);
+}
+
+// Makes the Esc key quit during the menus. clack 0.7 ignores Esc and only acts
+// on Ctrl+C, so we listen for Esc ourselves and feed clack the Ctrl+C keypress
+// it does understand — that way clack runs its own clean teardown (restoring the
+// cursor and raw mode) instead of us exiting abruptly mid-prompt. Returns a
+// function that removes the listener again.
+function installEscapeToQuit() {
+  if (!process.stdin.isTTY) {
+    return () => {};
+  }
+
+  readline.emitKeypressEvents(process.stdin);
+  const onKeypress = (character, key) => {
+    if (key && key.name === "escape") {
+      process.stdin.emit("keypress", "\x03", { name: "c", ctrl: true });
+    }
+  };
+
+  process.stdin.on("keypress", onKeypress);
+  return () => process.stdin.off("keypress", onKeypress);
 }
 
 // Clears the visible screen and moves the cursor home so the next menu redraws

@@ -163,3 +163,14 @@ export function menuIndent(level) {
   const cappedLevel = Math.min(Math.max(level, 0), MAX_INDENT_LEVELS);
   return MENU_INDENT_UNIT.repeat(cappedLevel);
 }
+
+// The controls line shown under the header during navigation. clack redraws the
+// bottom of the screen on every keypress, so this sits in the (static) header
+// region rather than as a true footer. Keys are dim, their labels fainter.
+export function renderControlsHint() {
+  return (
+    dim("↑↓") + faint(" move   ") +
+    dim("↵") + faint(" select   ") +
+    dim("esc") + faint(" / ") + dim("ctrl+c") + faint(" quit")
+  );
+}
