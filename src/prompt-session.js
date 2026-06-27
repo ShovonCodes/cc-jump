@@ -13,10 +13,24 @@ const NO_LABEL_FALLBACK = "(no summary available)";
 // first message can't blow out the width of the whole list.
 const MAX_LABEL_LENGTH = 64;
 
-// Shows the session menu and returns the chosen session object, or null if the
-// user cancelled. Like the directory picker, null means "back out cleanly".
-export async function promptUserToPickSession(sessions) {
-  const menuOptions = sessions.map(buildSessionOption);
+// Returned when the user chooses "Back" instead of a session, so the navigation
+// loop can tell it apart from both a real session and a cancel. A Symbol can't
+// be confused with any session object.
+export const SESSION_BACK = Symbol("session-back");
+
+// Shows the session menu and returns the chosen session object, SESSION_BACK if
+// the user backed out to the folder menu, or null if they cancelled entirely.
+// `canGoBack` controls whether the Back row is offered (it isn't when there's no
+// folder menu above this one).
+export async function promptUserToPickSession(sessions, canGoBack) {
+  const menuOptions = [];
+
+  if (canGoBack) {
+    menuOptions.push({ value: SESSION_BACK, label: dim("← Back") });
+  }
+  for (const session of sessions) {
+    menuOptions.push(buildSessionOption(session));
+  }
 
   const choice = await select({
     message: "Pick a session to resume",
