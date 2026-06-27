@@ -5,8 +5,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-// Looks for the claude executable on PATH directly — cheaper and quieter than
-// running it. Checks Windows wrapper extensions too.
+// Looks for the claude executable on PATH directly (cheaper than running it).
 export function isClaudeAvailable() {
   const directoriesOnPath = (process.env.PATH || "").split(path.delimiter);
   const candidateFileNames =
@@ -30,10 +29,8 @@ export function isClaudeAvailable() {
 // Launches `claude --resume <id>` from the project directory; resolves with its
 // exit code, or rejects if it couldn't start.
 //
-// spawn (not exec) with stdio:"inherit" hands claude the live terminal — exec
-// would buffer output and break the interactive UI. The directory goes through
-// the cwd option rather than a "cd … && claude" shell string, so no shell is
-// spawned and there's nothing to escape.
+// spawn + stdio:"inherit" (not exec) hands claude the live terminal. cwd goes via
+// the option, not a "cd … && claude" string, so no shell is spawned to escape.
 export function resumeSession(originalPath, sessionId) {
   return new Promise((resolve, reject) => {
     const child = spawn("claude", ["--resume", sessionId], {
@@ -41,14 +38,12 @@ export function resumeSession(originalPath, sessionId) {
       stdio: "inherit",
     });
 
-    // "error" = claude never started. Reject so the caller can explain, rather
-    // than leaving a silent exit after the "Resuming…" line.
+    // Never started — reject so the caller can explain (not a silent exit).
     child.on("error", (launchError) => {
       reject(launchError);
     });
 
-    // "exit" = claude ran and finished; it printed its own message, so pass the
-    // code through.
+    // Ran and finished; claude printed its own message, so pass the code through.
     child.on("exit", (exitCode) => {
       resolve(exitCode === null ? 0 : exitCode);
     });

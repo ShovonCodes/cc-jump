@@ -16,9 +16,8 @@ export function projectsRootExists() {
   return fs.existsSync(getProjectsRoot());
 }
 
-// Builds the project list, skipping directories with no sessions. To stay quick
-// it doesn't fully parse transcripts here — it reads only enough to recover each
-// project's real path; full parsing waits until a directory is picked.
+// The project list, skipping empty directories. Reads only enough to recover each
+// real path; full parsing waits until a directory is picked.
 export function findProjectDirectories() {
   const root = getProjectsRoot();
   if (!fs.existsSync(root)) {
@@ -58,8 +57,8 @@ export function findProjectDirectories() {
   return projectDirectories;
 }
 
-// Parses every session in one directory into display data, newest-first. This is
-// the expensive step, run only for the chosen directory.
+// Parses one directory's sessions into display data, newest-first (the expensive
+// step, run only for the chosen directory).
 export function readSessionsInDirectory(dataDir) {
   const sessionFiles = listSessionFiles(dataDir);
   const sessions = sessionFiles.map(readOneSession);
@@ -94,9 +93,8 @@ function listSessionFiles(dataDir) {
     .map((name) => path.join(dataDir, name));
 }
 
-// The encoded directory name is lossy: Claude Code turns "/" into "-", which
-// collides with dashes in real folder names. So we read the exact cwd recorded
-// inside a transcript, falling back to decoding the name only when none has one.
+// The encoded dir name is lossy ("/" → "-" collides with dashes in real names),
+// so we read the exact cwd from a transcript, decoding the name only as a fallback.
 export function resolveOriginalProjectPath(encodedName, sessionFiles) {
   const newestFirst = [...sessionFiles].sort(
     (left, right) => fileModifiedTime(right) - fileModifiedTime(left)
@@ -112,8 +110,7 @@ export function resolveOriginalProjectPath(encodedName, sessionFiles) {
   return decodeEncodedName(encodedName);
 }
 
-// Returns the first recorded cwd, or null. (The file is read whole into memory;
-// only the JSON parsing of later lines is skipped.)
+// First recorded cwd, or null.
 function readRecordedCwd(sessionFilePath) {
   for (const record of iterateRecords(sessionFilePath)) {
     if (record.cwd) {
@@ -154,7 +151,6 @@ function* iterateRecords(sessionFilePath) {
   }
 }
 
-// Most recent timestamp in a session as a Date, or null if none is usable.
 function findLatestTimestamp(records) {
   let latest = null;
   for (const record of records) {

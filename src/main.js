@@ -57,16 +57,12 @@ export async function main() {
 
   const projectTree = buildProjectTree(projectDirectories);
 
-  // Redraw before each menu so navigation updates in place instead of leaving a
-  // trail. We clear only the visible screen (2J, not 3J), keeping scrollback.
+  // Redraw in place before each menu (2J keeps scrollback; 3J would not).
   const redrawFrame = () => {
     clearScreen();
     console.log(renderHeader(version));
   };
 
-  // The controls footer is drawn just below each menu and redrawn after every
-  // keypress (clack erases below its frame when it repaints). This flag stops
-  // those redraws once navigation is over.
   footerEnabled = true;
 
   // clack only treats Ctrl+C as quit; make Esc quit too.
@@ -86,11 +82,10 @@ export async function main() {
   await resumeChosenSession(chosen.project, chosen.session);
 }
 
-// True only while the menus are on screen, so stray keypress redraws don't paint
-// a footer over the resume line or after exit.
+// On only while menus are up, so stray redraws don't paint over the resume line.
 let footerEnabled = false;
 
-// Draws the footer once clack has painted (next tick), if menus are still up.
+// Redraw the footer after clack paints (next tick), if menus are still up.
 function scheduleFooterDraw() {
   setImmediate(() => {
     if (footerEnabled) {
@@ -99,10 +94,8 @@ function scheduleFooterDraw() {
   });
 }
 
-// Esc quits during the menus, and every keypress reschedules the footer so it
-// survives clack's repaints. clack 0.7 ignores Esc, so we feed it the Ctrl+C it
-// understands — clack then runs its own clean teardown instead of us exiting
-// mid-prompt. Returns a function that removes the listener.
+// Esc quits (clack 0.7 only acts on Ctrl+C, so feed it that for a clean teardown);
+// every other keypress reschedules the footer past clack's repaint.
 function installEscapeToQuit() {
   if (!process.stdin.isTTY) {
     return () => {};
@@ -121,16 +114,15 @@ function installEscapeToQuit() {
   return () => process.stdin.off("keypress", onKeypress);
 }
 
-// Clears the visible screen and homes the cursor so the next menu redraws in place.
+// Clear the visible screen and home the cursor.
 function clearScreen() {
   if (process.stdout.isTTY) {
     process.stdout.write("\x1b[2J\x1b[H");
   }
 }
 
-// Walks down the folder tree and back up until a session is picked. Returns
-// { project, session } or null if cancelled. `folderStack` lets Back pop up a
-// level; the start node skips single-child chains so the first menu has a choice.
+// Drills down and back up until a session is picked. Returns { project, session }
+// or null. folderStack lets Back pop up a level.
 async function navigateToSession(projectTree, redrawFrame) {
   let currentNode = collapseToPresentable(projectTree);
   const folderStack = [];
@@ -216,8 +208,7 @@ async function pickSession(project, canGoBack, depth, redrawFrame) {
 
 // Launches Claude Code for the chosen session, after the last two safety checks.
 async function resumeChosenSession(project, session) {
-  // The session data exists but its directory is gone. `claude --resume` is
-  // scoped to that directory, so fail clearly instead of launching elsewhere.
+  // Directory gone — `claude --resume` is scoped to it, so don't launch elsewhere.
   if (!project.directoryStillExists) {
     printError(
       "Can't resume — the original project directory no longer exists:\n  " +

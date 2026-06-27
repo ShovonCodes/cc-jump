@@ -1,12 +1,8 @@
-// build-tree.js — turns the flat list of project directories into a navigable
-// folder tree, so the picker can drill down (projects → personal → cc-jump)
-// instead of dumping every full path in one long list. This is pure data with no
-// filesystem access, which keeps the navigation logic easy to reason about and
-// to test.
+// Builds a navigable folder tree from the flat project list so the picker can
+// drill down a level at a time. Pure data, no filesystem access.
 
-// One node in the tree. `project` is set only when this exact directory has its
-// own sessions; a node can have BOTH its own project and child folders (e.g. a
-// repo that also contains worktree sub-projects).
+// A node's `project` is set only if that exact directory has its own sessions; a
+// node can have both a project and child folders (e.g. a repo with worktrees).
 function createNode(name, fullPath) {
   return {
     name: name,
@@ -18,9 +14,7 @@ function createNode(name, fullPath) {
   };
 }
 
-// Builds the whole tree from the flat project list. Each project's path is split
-// into segments, and we walk from the root creating nodes as needed, attaching
-// the project at its final segment. Aggregate counts are filled in afterwards.
+// Splits each path into segments, builds nodes along the way, then fills counts.
 export function buildProjectTree(projectDirectories) {
   const root = createNode("", "/");
 
@@ -44,15 +38,11 @@ export function buildProjectTree(projectDirectories) {
   return root;
 }
 
-// Splits an absolute path into its non-empty segments.
-// "/Users/me/app" -> ["Users", "me", "app"].
 function splitIntoSegments(absolutePath) {
   return absolutePath.split("/").filter((segment) => segment.length > 0);
 }
 
-// Walks the tree once, bottom-up, recording on each node the total session count
-// and most recent activity across itself and all of its descendants. These drive
-// the "(N sessions)" badge on a folder and the most-recent-first ordering.
+// Sums each node's session count and newest activity over its whole subtree.
 function accumulateTotals(node) {
   let totalSessions = node.project ? node.project.sessionCount : 0;
   let mostRecent = node.project ? node.project.mostRecentActivity : 0;
@@ -69,10 +59,9 @@ function accumulateTotals(node) {
   node.mostRecentActivity = mostRecent;
 }
 
-// Follows a chain of single-child folders that have no sessions of their own and
-// returns the first node worth stopping at — one that branches, or that has its
-// own sessions. This is what lets navigation skip past noise like /Users/me,
-// where there's no real choice to make.
+// Skips single-child folders with no sessions of their own, stopping at the
+// first node that branches or is itself a project — so navigation starts at a
+// real choice rather than stepping through /Users/me one segment at a time.
 export function collapseToPresentable(node) {
   let currentNode = node;
   while (currentNode.children.size === 1 && currentNode.project === null) {
@@ -81,10 +70,8 @@ export function collapseToPresentable(node) {
   return currentNode;
 }
 
-// Lists a node's child folders as menu-ready entries. Each child is collapsed
-// down to its first meaningful node, so a single-child chain shows as one row
-// (".claude/worktrees") instead of forcing a click per segment. Entries come
-// back most-recently-active first, matching the rest of the UI.
+// A node's child folders as menu entries, each collapsed to one row and sorted
+// most-recently-active first.
 export function listChildFolders(node) {
   const entries = [];
 
@@ -104,9 +91,8 @@ export function listChildFolders(node) {
   return entries;
 }
 
-// Collapses a child node into a display label: it joins single-child chains into
-// one slash-separated label, but stops as soon as a node has its own sessions (we
-// must never hide a folder that can itself be resumed) or branches into several.
+// Joins a single-child chain into one "a/b/c" label, stopping at a node that has
+// sessions (never hide a resumable folder) or branches.
 function collapseChildForDisplay(child) {
   const labelSegments = [child.name];
   let currentNode = child;

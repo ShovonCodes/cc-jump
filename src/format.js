@@ -54,7 +54,6 @@ export function bold(text) {
   return `\x1b[1m${text}\x1b[22m`;
 }
 
-// Replaces the home directory with "~" so paths read the way people think.
 export function shortenHomePath(absolutePath) {
   const home = os.homedir();
   if (absolutePath === home) {
@@ -75,7 +74,6 @@ export function padRight(text, width) {
   return text + " ".repeat(width - text.length);
 }
 
-// A Date as "2 hours ago". Walks smallest unit up, first match wins.
 export function formatRelativeTime(date) {
   const secondsAgo = Math.round((Date.now() - date.getTime()) / 1000);
 
@@ -117,7 +115,6 @@ function countLabel(count, unit) {
   return `${count} ${plural} ago`;
 }
 
-// Launch header: name, description, version, plus a separator.
 export function renderHeader(version) {
   const title = bold(accent("cc-jump"));
   const tagline = secondary("Browse and resume Claude Code sessions by project");
@@ -129,8 +126,7 @@ export function renderSeparator() {
   return faint("─".repeat(52));
 }
 
-// Menu indent grows with navigation depth so the hierarchy is visible. Capped so
-// deep paths can't push the list off the right edge.
+// Indent grows with depth (capped) so the hierarchy shows without overflowing.
 const MENU_INDENT_UNIT = "  ";
 const MAX_INDENT_LEVELS = 6;
 
@@ -139,7 +135,6 @@ export function menuIndent(level) {
   return MENU_INDENT_UNIT.repeat(cappedLevel);
 }
 
-// The controls line shown beneath the menu (see drawMenuFooter).
 export function renderControlsHint() {
   return (
     dim("↑↓") + faint(" move   ") +
@@ -148,10 +143,9 @@ export function renderControlsHint() {
   );
 }
 
-// Draws the controls hint one line below the cursor — clack leaves the cursor at
-// the bottom of its menu after each render, so this lands right under the list.
-// We save/restore the cursor so clack's own redraws stay aligned. clack erases
-// downward when it repaints, so main re-runs this after every keypress.
+// Draws the hint one line below the cursor (where clack leaves it, at the menu's
+// bottom), saving/restoring the cursor. clack erases downward on repaint, so main
+// re-runs this after every keypress.
 export function drawMenuFooter() {
   if (!process.stdout.isTTY) {
     return;
