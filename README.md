@@ -6,7 +6,6 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/cc-jump"><img src="https://img.shields.io/npm/v/cc-jump.svg?color=2dd4bf" alt="npm version"></a>
-  <a href="https://www.npmjs.com/package/cc-jump"><img src="https://img.shields.io/npm/dm/cc-jump.svg?color=2dd4bf" alt="npm downloads"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/npm/l/cc-jump.svg?color=2dd4bf" alt="MIT license"></a>
   <img src="https://img.shields.io/node/v/cc-jump.svg?color=2dd4bf" alt="node version">
 </p>
