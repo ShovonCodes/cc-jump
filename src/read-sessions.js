@@ -23,10 +23,12 @@ export function projectsRootExists() {
 // project path, how many sessions it holds, and when it was last touched. We
 // skip any project directory that has no sessions so the picker stays clean.
 //
-// This deliberately does NOT parse full transcripts — for each directory it
-// reads at most one session file (to recover the real path), so listing stays
-// fast even with many large sessions. Full parsing happens later, only for the
-// one directory the user actually picks.
+// To keep listing reasonably quick, this does NOT fully parse every transcript.
+// For each directory it scans session files only until one reveals a recorded
+// cwd — usually just the newest file, but it will read further if earlier files
+// record none. (Each file it does touch is read whole into memory; see
+// iterateRecords.) The heavy per-session parsing happens later, only for the one
+// directory the user actually picks.
 export function findProjectDirectories() {
   const root = getProjectsRoot();
   if (!fs.existsSync(root)) {
@@ -115,7 +117,7 @@ function listSessionFiles(dataDir) {
 // that each session records inside its transcript — that value is exact. Only if
 // no session reveals a cwd (e.g. every file is unreadable) do we fall back to
 // decoding the name and accept its ambiguity.
-function resolveOriginalProjectPath(encodedName, sessionFiles) {
+export function resolveOriginalProjectPath(encodedName, sessionFiles) {
   const newestFirst = [...sessionFiles].sort(
     (left, right) => fileModifiedTime(right) - fileModifiedTime(left)
   );
@@ -130,8 +132,10 @@ function resolveOriginalProjectPath(encodedName, sessionFiles) {
   return decodeEncodedName(encodedName);
 }
 
-// Reads a session file just far enough to find the first "cwd" it recorded, then
-// stops. Returns null if the file is unreadable or never mentions a cwd.
+// Scans a session's records for the first "cwd" it recorded and returns it,
+// stopping at the first match. Returns null if the file is unreadable or never
+// mentions a cwd. (The file is read whole into memory first — see
+// iterateRecords — so only the JSON parsing of later lines is skipped.)
 function readRecordedCwd(sessionFilePath) {
   for (const record of iterateRecords(sessionFilePath)) {
     if (record.cwd) {
@@ -154,9 +158,9 @@ function parseSessionRecords(sessionFilePath) {
   return Array.from(iterateRecords(sessionFilePath));
 }
 
-// Shared line-by-line reader for a .jsonl file. Yields one parsed record per
-// valid line and silently skips blank or malformed lines, so a single corrupt
-// line never takes down the whole session.
+// Shared reader for a .jsonl file: it reads the whole file into memory, then
+// yields one parsed record per line, lazily, skipping blank or malformed lines
+// so a single corrupt line never takes down the whole session.
 function* iterateRecords(sessionFilePath) {
   let fileContents;
   try {
