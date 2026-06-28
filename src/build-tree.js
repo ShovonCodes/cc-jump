@@ -15,14 +15,18 @@ function createNode(name, fullPath) {
 }
 
 // Splits each path into segments, builds nodes along the way, then fills counts.
-export function buildProjectTree(projectDirectories) {
+// `platform` decides which separators count (see splitIntoSegments); it defaults
+// to the running OS and is injectable so the tree can be tested for any platform.
+export function buildProjectTree(projectDirectories, platform = process.platform) {
   const root = createNode("", "/");
 
   for (const project of projectDirectories) {
-    const segments = splitIntoSegments(project.originalPath);
+    const segments = splitIntoSegments(project.originalPath, platform);
     let currentNode = root;
     let walkedPath = "";
 
+    // fullPath is always "/"-joined so the breadcrumb can split it the same way
+    // on every OS; it's display-only — the resume uses project.originalPath.
     for (const segment of segments) {
       walkedPath = walkedPath + "/" + segment;
       if (!currentNode.children.has(segment)) {
@@ -38,8 +42,12 @@ export function buildProjectTree(projectDirectories) {
   return root;
 }
 
-function splitIntoSegments(absolutePath) {
-  return absolutePath.split("/").filter((segment) => segment.length > 0);
+// Windows accepts both "\" and "/" as path separators; POSIX uses only "/" and
+// permits "\" inside a filename, so we must not split on it there. The recorded
+// cwd always matches the OS cc-jump runs on, so the platform picks the right set.
+export function splitIntoSegments(absolutePath, platform = process.platform) {
+  const separators = platform === "win32" ? /[/\\]/ : /\//;
+  return absolutePath.split(separators).filter((segment) => segment.length > 0);
 }
 
 // Sums each node's session count and newest activity over its whole subtree.

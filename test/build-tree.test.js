@@ -8,6 +8,7 @@ import {
   buildProjectTree,
   collapseToPresentable,
   listChildFolders,
+  splitIntoSegments,
 } from "../src/build-tree.js";
 
 // A stand-in for what findProjectDirectories() produces, with only the fields
@@ -82,4 +83,87 @@ test("a lone project collapses all the way to a sessions-only leaf", () => {
   assert.equal(start.fullPath, "/a/b/c");
   assert.equal(start.project.sessionCount, 2);
   assert.equal(listChildFolders(start).length, 0); // no sub-folders → goes straight to sessions
+});
+
+// --- OS-agnostic path splitting ---------------------------------------------
+// Paths come from the transcript's recorded cwd, so they use the separators of
+// the OS the session ran on. These pass the platform explicitly so each case is
+// deterministic no matter which OS runs the tests.
+
+test("splits POSIX paths on / and leaves backslashes as literal name characters", () => {
+  assert.deepEqual(splitIntoSegments("/Users/me/projects/foo", "linux"), [
+    "Users",
+    "me",
+    "projects",
+    "foo",
+  ]);
+  assert.deepEqual(splitIntoSegments("/Users/me/projects/foo", "darwin"), [
+    "Users",
+    "me",
+    "projects",
+    "foo",
+  ]);
+  // "\" is a valid filename character on POSIX, so it must NOT be a separator.
+  assert.deepEqual(splitIntoSegments("/srv/od\\nd/app", "linux"), [
+    "srv",
+    "od\\nd",
+    "app",
+  ]);
+});
+
+test("splits Windows paths on both \\ and /, including mixed and UNC paths", () => {
+  assert.deepEqual(
+    splitIntoSegments("d:\\Workspace\\personal\\novel\\rnos", "win32"),
+    ["d:", "Workspace", "personal", "novel", "rnos"]
+  );
+  // Windows tolerates forward slashes too, even mixed with backslashes.
+  assert.deepEqual(
+    splitIntoSegments("D:\\Workspace/personal\\foo", "win32"),
+    ["D:", "Workspace", "personal", "foo"]
+  );
+  assert.deepEqual(splitIntoSegments("D:/Workspace/foo", "win32"), [
+    "D:",
+    "Workspace",
+    "foo",
+  ]);
+  // UNC share: leading "\\" yields empties, which are filtered out.
+  assert.deepEqual(splitIntoSegments("\\\\server\\share\\proj", "win32"), [
+    "server",
+    "share",
+    "proj",
+  ]);
+});
+
+test("drops empty segments from trailing and repeated separators", () => {
+  assert.deepEqual(splitIntoSegments("/a//b/", "linux"), ["a", "b"]);
+  assert.deepEqual(splitIntoSegments("d:\\a\\\\b\\", "win32"), ["d:", "a", "b"]);
+});
+
+test("groups Windows projects into a real hierarchy instead of a flat path list", () => {
+  // The exact case a Windows user hit: backslash cwds were treated as one
+  // segment each, so every project sat at the root as a full path. They should
+  // group under their shared parents instead.
+  const tree = buildProjectTree(
+    [
+      fakeProject("d:\\Workspace\\personal\\novel\\rnos", 8, 400),
+      fakeProject("d:\\Workspace\\everviz\\everviz", 8, 300),
+      fakeProject("d:\\Workspace\\personal\\app-dev\\expense-tracker", 1, 200),
+      fakeProject("d:\\Workspace\\personal\\games\\Genshin Runner", 2, 100),
+    ],
+    "win32"
+  );
+
+  // d: and Workspace are single-child, so navigation starts where it branches.
+  const start = collapseToPresentable(tree);
+  assert.equal(start.fullPath, "/d:/Workspace");
+
+  const folders = listChildFolders(start);
+  // personal's newest activity (400) beats everviz's (300); everviz has one
+  // child so it collapses to a single row.
+  assert.deepEqual(
+    folders.map((folder) => folder.label),
+    ["personal", "everviz/everviz"]
+  );
+  assert.equal(folders[0].totalSessions, 11); // 8 + 1 + 2
+  assert.equal(folders[1].totalSessions, 8);
 });
