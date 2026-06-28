@@ -135,7 +135,16 @@ export function menuIndent(level) {
   return MENU_INDENT_UNIT.repeat(cappedLevel);
 }
 
-export function renderControlsHint() {
+// The session picker adds the `o` shortcut and reframes Enter as "open session".
+export function renderControlsHint(variant) {
+  if (variant === "session") {
+    return (
+      dim("↑↓") + faint(" move   ") +
+      dim("↵") + faint(" open session   ") +
+      dim("o") + faint(" open in VS Code   ") +
+      dim("esc") + faint(" / ") + dim("ctrl+c") + faint(" quit")
+    );
+  }
   return (
     dim("↑↓") + faint(" move   ") +
     dim("↵") + faint(" select   ") +
@@ -146,9 +155,9 @@ export function renderControlsHint() {
 // Draws the hint one line below the cursor (where clack leaves it, at the menu's
 // bottom), saving/restoring the cursor. clack erases downward on repaint, so main
 // re-runs this after every keypress.
-export function drawMenuFooter() {
+export function drawMenuFooter(variant) {
   if (!process.stdout.isTTY) {
     return;
   }
-  process.stdout.write("\x1b7\x1b[1B\r\x1b[2K  " + renderControlsHint() + "\x1b8");
+  process.stdout.write("\x1b7\x1b[1B\r\x1b[2K  " + renderControlsHint(variant) + "\x1b8");
 }

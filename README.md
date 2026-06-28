@@ -31,7 +31,7 @@ npx cc-jump
   → you're back in Claude Code, in the right directory
 ```
 
-Single-child folders are skipped so every menu is a real choice, and `← Back` steps up a level.
+Single-child folders are skipped so every menu is a real choice, and `← Back` steps up a level. On the session list, press `o` to open that project in VS Code as well as resuming it in the terminal.
 
 ## How it works
 

@@ -28,7 +28,12 @@ import {
   FOLDER_CHOICE,
 } from "./prompt-directory.js";
 import { promptUserToPickSession, SESSION_BACK } from "./prompt-session.js";
-import { isClaudeAvailable, resumeSession } from "./resume-session.js";
+import {
+  isClaudeAvailable,
+  isEditorAvailable,
+  openDirectoryInEditor,
+  resumeSession,
+} from "./resume-session.js";
 
 export async function main() {
   const version = readOwnVersion();
@@ -79,23 +84,32 @@ export async function main() {
     return; // Cancelled.
   }
 
-  await resumeChosenSession(chosen.project, chosen.session);
+  await resumeChosenSession(chosen.project, chosen.session, chosen.openInEditor);
 }
 
 // On only while menus are up, so stray redraws don't paint over the resume line.
 let footerEnabled = false;
 
+// Which menu is showing, so the footer hint and the `o` shortcut match the phase.
+let footerHintVariant = "folder";
+
+// Set true when `o` is pressed on the session picker — read back once the picker
+// resolves to decide whether to also open the project in VS Code.
+let editorRequested = false;
+
 // Redraw the footer after clack paints (next tick), if menus are still up.
 function scheduleFooterDraw() {
   setImmediate(() => {
     if (footerEnabled) {
-      drawMenuFooter();
+      drawMenuFooter(footerHintVariant);
     }
   });
 }
 
-// Esc quits (clack 0.7 only acts on Ctrl+C, so feed it that for a clean teardown);
-// every other keypress reschedules the footer past clack's repaint.
+// Esc quits (clack 0.7 only acts on Ctrl+C, so feed it that for a clean teardown).
+// In the session picker, `o` flags a VS Code open and then submits the highlighted
+// row by feeding clack a synthetic Enter. Any other key reschedules the footer
+// past clack's repaint.
 function installEscapeToQuit() {
   if (!process.stdin.isTTY) {
     return () => {};
@@ -105,6 +119,17 @@ function installEscapeToQuit() {
   const onKeypress = (character, key) => {
     if (key && key.name === "escape") {
       process.stdin.emit("keypress", "\x03", { name: "c", ctrl: true });
+      return;
+    }
+    if (
+      footerHintVariant === "session" &&
+      key &&
+      key.name === "o" &&
+      !key.ctrl &&
+      !key.meta
+    ) {
+      editorRequested = true;
+      process.stdin.emit("keypress", "\r", { name: "return" });
       return;
     }
     scheduleFooterDraw();
@@ -139,6 +164,7 @@ async function navigateToSession(projectTree, redrawFrame) {
         folderStack.length,
         redrawFrame
       );
+      const openInEditor = editorRequested;
       if (session === null) {
         return null;
       }
@@ -146,9 +172,10 @@ async function navigateToSession(projectTree, redrawFrame) {
         currentNode = folderStack.pop();
         continue;
       }
-      return { project: currentNode.project, session: session };
+      return { project: currentNode.project, session, openInEditor };
     }
 
+    footerHintVariant = "folder";
     redrawFrame();
     scheduleFooterDraw();
     const choice = await promptUserToPickFromFolder(
@@ -178,13 +205,14 @@ async function navigateToSession(projectTree, redrawFrame) {
         folderStack.length,
         redrawFrame
       );
+      const openInEditor = editorRequested;
       if (session === null) {
         return null;
       }
       if (session === SESSION_BACK) {
         continue; // Back to this folder's menu.
       }
-      return { project: currentNode.project, session: session };
+      return { project: currentNode.project, session, openInEditor };
     }
   }
 }
@@ -202,12 +230,15 @@ async function pickSession(project, canGoBack, depth, redrawFrame) {
     );
     return null;
   }
+  footerHintVariant = "session";
+  editorRequested = false;
   scheduleFooterDraw();
   return promptUserToPickSession(sessions, canGoBack, depth);
 }
 
 // Launches Claude Code for the chosen session, after the last two safety checks.
-async function resumeChosenSession(project, session) {
+// When openInEditor is set, also opens the project in VS Code (non-blocking).
+async function resumeChosenSession(project, session, openInEditor) {
   // Directory gone — `claude --resume` is scoped to it, so don't launch elsewhere.
   if (!project.directoryStillExists) {
     printError(
@@ -222,6 +253,10 @@ async function resumeChosenSession(project, session) {
       "claude CLI not found. Install it with:\n  npm install -g @anthropic-ai/claude-code"
     );
     return;
+  }
+
+  if (openInEditor) {
+    openProjectInEditor(project.originalPath);
   }
 
   printResumingLine(project.originalPath);
@@ -253,6 +288,19 @@ function describeLaunchFailure(launchError, originalPath) {
   const reason =
     launchError && launchError.message ? launchError.message : String(launchError);
   return `Couldn't launch claude: ${reason}`;
+}
+
+// Opens the project in VS Code, or notes why it couldn't (still resumes either way).
+function openProjectInEditor(originalPath) {
+  if (!isEditorAvailable()) {
+    console.log(
+      "\n" +
+        faint("VS Code's `code` command isn't on your PATH — resuming in the terminal only.")
+    );
+    return;
+  }
+  openDirectoryInEditor(originalPath);
+  console.log("\n" + amber(`↪ Opening ${shortenHomePath(originalPath)} in VS Code…`));
 }
 
 function printResumingLine(originalPath) {

@@ -8,7 +8,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { isClaudeAvailable } from "../src/resume-session.js";
+import { isClaudeAvailable, isEditorAvailable } from "../src/resume-session.js";
 
 // These tests overwrite process.env.PATH, so each one restores it afterwards.
 function withPath(temporaryPath, body) {
@@ -50,4 +50,19 @@ test("skips empty PATH segments instead of false-positiving on the cwd", () => {
   withPath(path.delimiter + path.delimiter, () => {
     assert.equal(isClaudeAvailable(), false);
   });
+});
+
+test("finds the editor when `code` is on PATH, misses when it isn't", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cc-jump-path-"));
+  try {
+    withPath(dir, () => {
+      assert.equal(isEditorAvailable(), false);
+    });
+    fs.writeFileSync(path.join(dir, "code"), "");
+    withPath(dir, () => {
+      assert.equal(isEditorAvailable(), true);
+    });
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
