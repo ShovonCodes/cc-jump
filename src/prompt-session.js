@@ -40,22 +40,18 @@ export async function promptUserToPickSession(sessions, canGoBack, depth) {
 }
 
 // Real labels read in soft white; the fallback in faint grey marks it a placeholder.
+// The git branch trails the time when known, taking the slot the id used to hold.
 function buildSessionOption(session, indent) {
   const labelText = session.label
     ? secondary(truncate(session.label, MAX_LABEL_LENGTH))
     : faint(NO_LABEL_FALLBACK);
 
   const relativeTime = dim(formatRelativeTime(session.lastActivity));
-  const shortId = faint(shortenSessionId(session.id));
+  const branch = session.gitBranch ? "  " + faint(session.gitBranch) : "";
 
-  const label = `${indent}${labelText}  ${relativeTime}  ${shortId}`;
+  const label = `${indent}${labelText}  ${relativeTime}${branch}`;
 
   return { value: session, label: label };
-}
-
-// First segment of the UUID is enough to recognize, like a short git hash.
-function shortenSessionId(sessionId) {
-  return sessionId.slice(0, 8);
 }
 
 function truncate(text, maxLength) {

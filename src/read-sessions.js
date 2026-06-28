@@ -76,8 +76,21 @@ function readOneSession(sessionFilePath) {
   return {
     id: sessionId,
     label: buildSessionLabel(records),
+    gitBranch: findGitBranch(records),
     lastActivity: findLatestTimestamp(records) || fileModifiedTime(sessionFilePath),
   };
+}
+
+// The branch can change mid-session, so keep the last one recorded — it's the
+// branch you'd land on when resuming. Null when no record carried one.
+function findGitBranch(records) {
+  let branch = null;
+  for (const record of records) {
+    if (typeof record.gitBranch === "string" && record.gitBranch) {
+      branch = record.gitBranch;
+    }
+  }
+  return branch;
 }
 
 function listSessionFiles(dataDir) {
